@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Instrument {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  symbol      String   @unique
+  type        String   // "perp", "spot", etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  fundingRates FundingRate[]
+  analytics    Analytics[]
+  alerts       Alert[]
+
+  @@map("instruments")
+}
+
+model FundingRate {
+  id           String   @id @default(cuid())
+  instrumentId String
+  rate         Float
+  timestamp    DateTime
+  venue        String   @default("HlPerp") // "BinPerp", "HlPerp", "BybitPerp"
+  blockNumber  BigInt?
+  txHash       String?
+  createdAt    DateTime @default(now())
+
+  // Relations
+  instrument Instrument @relation(fields: [instrumentId], references: [id])
+
+  @@unique([instrumentId, venue, timestamp])
+  @@index([instrumentId, venue, timestamp])
+  @@map("funding_rates")
+}
+
+model Analytics {
+  id           String   @id @default(cuid())
+  instrumentId String
+  period       String   // "1h", "4h", "1d", "1w", "1m"
+  avgRate      Float
+  maxRate      Float
+  minRate      Float
+  volatility   Float
+  yield        Float
+  timestamp    DateTime
+  createdAt    DateTime @default(now())
+
+  // Relations
+  instrument Instrument @relation(fields: [instrumentId], references: [id])
+
+  @@unique([instrumentId, period, timestamp])
+  @@index([instrumentId, period, timestamp])
+  @@map("analytics")
+}
+
+model Alert {
+  id           String   @id @default(cuid())
+  name         String
+  instrumentId String?
+  condition    String   // "above", "below", "change"
+  threshold    Float
+  period       String   // "1h", "4h", "1d"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  instrument Instrument? @relation(fields: [instrumentId], references: [id])
+
+  @@map("alerts")
+} 
